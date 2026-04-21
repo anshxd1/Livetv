@@ -50,7 +50,7 @@
 
     async function loadData() {
       const [channelsRes, cookiesRes] = await Promise.all([
-        fetch('https://allinonereborn.online/jtv-fetch/jstr4web.json'),
+        fetch('https://api.allorigins.win/raw?url=https://allinonereborn.online/jtv-fetch/jstr4web.json'),
         fetch('https://allinonereborn.online/jstrweb2/cookies.json')
       ]);
       allChannels = await channelsRes.json();
