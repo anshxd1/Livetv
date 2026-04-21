@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player • Live TV</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.10.0/shaka-player.compiled.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    video { width: 100%; height: 100%; background: #000; }
+    .shaka-video-container { border-radius: 20px; overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.9); }
+  </style>
+</head>
+<body class="bg-black text-white">
+  <div class="max-w-7xl mx-auto p-6">
+    <div class="flex items-center gap-4 mb-6">
+      <a href="index.html" class="flex items-center gap-2 text-lg hover:text-red-500">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </a>
+      <div id="channel-info" class="flex items-center gap-4"></div>
+    </div>
+
+    <div id="player-container" class="aspect-video bg-zinc-950 rounded-3xl overflow-hidden">
+      <video id="video" controls autoplay></video>
+    </div>
+  </div>
+
+  <script>
+    async function initPlayer() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      
+      // Fetch data
+      const [channelsRes, cookiesRes] = await Promise.all([
+        fetch('https://allinonereborn.online/jtv-fetch/jstr4web.json'),
+        fetch('https://allinonereborn.online/jstrweb2/cookies.json')
+      ]);
+      const channels = await channelsRes.json();
+      const cookies = await cookiesRes.json();
+      const cookieValue = cookies[1].cookie;
+
+      const channel = channels.find(ch => ch.id == id);
+      if (!channel) {
+        document.getElementById('channel-info').innerHTML = `<h1 class="text-2xl">Channel not found</h1>`;
+        return;
+      }
+
+      // Channel header
+      document.getElementById('channel-info').innerHTML = `
+        <img src="${channel.logo}" class="w-12 h-12 rounded-2xl">
+        <div>
+          <h1 class="text-3xl font-bold">${channel.name}</h1>
+          <p class="text-zinc-400">${channel.category}</p>
+        </div>
+      `;
+
+      // Shaka Player setup
+      const video = document.getElementById('video');
+      shaka.polyfill.installAll();
+
+      const player = new shaka.Player(video);
+      
+      // Important: Cookie add karo har request mein (manifest + segments)
+      player.getNetworkingEngine().registerRequestFilter((type, request) => {
+        if (request.headers) {
+          request.headers['Cookie'] = cookieValue;
+        } else {
+          request.headers = { 'Cookie': cookieValue };
+        }
+      });
+
+      // Live stream settings
+      player.configure({
+        streaming: {
+          lowLatencyMode: true,
+          autoLowLatencyMode: true,
+          alwaysStreamBySegment: true
+        }
+      });
+
+      try {
+        await player.load(channel.url);
+        console.log('%c✅ Stream started: ' + channel.name, 'color: lime; font-size: 16px');
+      } catch (e) {
+        console.error(e);
+        alert('Stream load failed. Some channels require Chrome + Widevine DRM enabled.');
+      }
+    }
+
+    window.onload = initPlayer;
+  </script>
+</body>
+</html>
